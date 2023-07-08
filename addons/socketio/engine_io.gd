@@ -5,7 +5,6 @@ signal connected
 signal disconnected
 signal message_received
 
-enum EngineState { NOT_CONNECTED, CONNECTING, CONNECTED }
 enum MessageType { OPEN, CLOSE, PING, PONG, MESSAGE, UPGRADE, NOOP }
 
 var sid = ""
@@ -14,14 +13,15 @@ var ping_timeout = 20000
 var max_payload = 1000000
 
 var socket = WebSocketPeer.new()
-var socket_state: EngineState = EngineState.NOT_CONNECTED
 var socket_thread: Thread
 var mutex := Mutex.new()
+
+func set_headers(headers: PackedStringArray):
+	socket.handshake_headers = headers
 
 func connect_to_url(url, headers: PackedStringArray = []):
 	socket.handshake_headers = headers
 	socket.connect_to_url(url + "/socket.io/?EIO=4&transport=websocket")
-	socket_state = EngineState.CONNECTING
 	socket_thread = Thread.new()
 	socket_thread.start(socket_poll)
 
@@ -41,12 +41,11 @@ func socket_poll():
 		mutex.lock()
 		socket.poll()
 		var state = socket.get_ready_state()
-		mutex.unlock()
 		if state == WebSocketPeer.STATE_OPEN:
-			mutex.lock()
 			while socket.get_available_packet_count():
 				var packet = socket.get_packet()
 				var content = packet.get_string_from_utf8()
+				mutex.unlock()
 				var packet_type = int(content[0])
 				match packet_type:
 					MessageType.OPEN:
@@ -65,18 +64,17 @@ func socket_poll():
 					MessageType.MESSAGE:
 						var message = content.substr(1)
 						_on_msg_received.call_deferred(message)
+				mutex.lock()
 			mutex.unlock()
-		elif state == WebSocketPeer.STATE_CLOSING:
-			# Keep polling to achieve proper close.
-			pass
 		elif state == WebSocketPeer.STATE_CLOSED:
-			mutex.lock()
 			var code = socket.get_close_code()
 			var reason = socket.get_close_reason()
 			mutex.unlock()
 			print("WebSocket closed with code: %d, reason %s. Clean: %s" % [code, reason, code != -1])
 			_on_closed.call_deferred()
 			return
+		else:
+			mutex.unlock()
 
 func _on_connected():
 	connected.emit()

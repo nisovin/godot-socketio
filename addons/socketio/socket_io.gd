@@ -57,12 +57,13 @@ func _on_engine_message_received(message):
 			if array == null or not array is Array:
 				push_error("Invalid EVENT!")
 				return
-			if array.size() == 1:
-				emit_signal(array[0])
-			elif array.size() == 2:
-				emit_signal(array[0], array[1])
-			elif array.size() == 3:
-				emit_signal(array[0], array[1], array[2])
+			if has_user_signal(array[0]):
+				if array.size() == 1:
+					emit_signal(array[0])
+				elif array.size() == 2:
+					emit_signal(array[0], array[1])
+				elif array.size() == 3:
+					emit_signal(array[0], array[1], array[2])
 
 		MessageType.ACK:
 			var comma = message_content.find(",")
