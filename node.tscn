@@ -1,26 +1,16 @@
-[gd_scene load_steps=2 format=3 uid="uid://xsagp1wvhy3i"]
+[gd_scene load_steps=2 format=2]
 
-[ext_resource type="Script" path="res://node.gd" id="1_nq2ur"]
+[ext_resource path="res://node.gd" type="Script" id=1]
 
 [node name="Node" type="Node"]
-script = ExtResource("1_nq2ur")
-
-[node name="HTTPRequest" type="HTTPRequest" parent="."]
+script = ExtResource( 1 )
 
 [node name="Control" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+margin_right = 40.0
+margin_bottom = 40.0
 
 [node name="LineEdit" type="LineEdit" parent="Control"]
-layout_mode = 0
-offset_left = 156.0
-offset_top = 163.0
-offset_right = 548.0
-offset_bottom = 198.0
+margin_right = 58.0
+margin_bottom = 24.0
 
-[connection signal="request_completed" from="HTTPRequest" to="." method="_on_http_request_request_completed"]
-[connection signal="text_submitted" from="Control/LineEdit" to="." method="_on_line_edit_text_submitted"]
+[connection signal="text_entered" from="Control/LineEdit" to="." method="_on_line_edit_text_submitted"]

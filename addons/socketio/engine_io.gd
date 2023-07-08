@@ -1,5 +1,5 @@
 class_name EngineIO
-extends RefCounted
+extends Reference
 
 signal connected
 signal disconnected
@@ -13,77 +13,51 @@ var ping_interval = 25000
 var ping_timeout = 20000
 var max_payload = 1000000
 
-var socket = WebSocketPeer.new()
-var socket_state: EngineState = EngineState.NOT_CONNECTED
-var socket_thread: Thread
-var mutex := Mutex.new()
+var socket = WebSocketClient.new()
 
-func connect_to_url(url, headers: PackedStringArray = []):
-	socket.handshake_headers = headers
-	socket.connect_to_url(url + "/socket.io/?EIO=4&transport=websocket")
-	socket_state = EngineState.CONNECTING
-	socket_thread = Thread.new()
-	socket_thread.start(socket_poll)
+func connect_to_url(url, headers: PoolStringArray = []):
+	#socket.connect("connection_established", self, "_on_connected")
+	socket.connect("data_received", self, "_on_data")
+	socket.connect("connection_closed", self, "_on_closed")
+	socket.connect_to_url(url + "/socket.io/?EIO=4&transport=websocket", [], false, headers)
+	Engine.get_main_loop().connect("idle_frame", self, "socket_poll")
 
 func send_text(content: String):
 	send_type(MessageType.MESSAGE, content)
 
-func send_type(type: MessageType, content: String = ""):
-	mutex.lock()
-	socket.send_text(str(type) + content)
-	mutex.unlock()
+func send_type(type, content: String = ""):
+	#print("send:" + str(type) + content)
+	var data = (str(type) + content).to_utf8()
+	socket.get_peer(1).set_write_mode(WebSocketPeer.WRITE_MODE_TEXT)
+	socket.get_peer(1).put_packet(data)
 
 func pong():
 	send_type(MessageType.PONG)
 
 func socket_poll():
-	while true:
-		mutex.lock()
-		socket.poll()
-		var state = socket.get_ready_state()
-		mutex.unlock()
-		if state == WebSocketPeer.STATE_OPEN:
-			mutex.lock()
-			while socket.get_available_packet_count():
-				var packet = socket.get_packet()
-				var content = packet.get_string_from_utf8()
-				var packet_type = int(content[0])
-				match packet_type:
-					MessageType.OPEN:
-						var data = JSON.parse_string(content.substr(1))
-						sid = data.sid
-						ping_interval = data.pingInterval
-						ping_timeout = data.pingTimeout
-						max_payload = data.maxPayload
-						_on_connected.call_deferred()
-					MessageType.CLOSE:
-						_on_closed.call_deferred()
-						mutex.unlock()
-						return
-					MessageType.PING:
-						pong()
-					MessageType.MESSAGE:
-						var message = content.substr(1)
-						_on_msg_received.call_deferred(message)
-			mutex.unlock()
-		elif state == WebSocketPeer.STATE_CLOSING:
-			# Keep polling to achieve proper close.
-			pass
-		elif state == WebSocketPeer.STATE_CLOSED:
-			mutex.lock()
-			var code = socket.get_close_code()
-			var reason = socket.get_close_reason()
-			mutex.unlock()
-			print("WebSocket closed with code: %d, reason %s. Clean: %s" % [code, reason, code != -1])
-			_on_closed.call_deferred()
+	socket.poll()
+
+func _on_data():
+	var packet = socket.get_peer(1).get_packet()
+	var content = packet.get_string_from_utf8()
+	#print("packet:", content)
+	var packet_type = int(content[0])
+	match packet_type:
+		MessageType.OPEN:
+			var data = JSON.parse(content.substr(1)).result
+			sid = data.sid
+			ping_interval = data.pingInterval
+			ping_timeout = data.pingTimeout
+			max_payload = data.maxPayload
+			call_deferred("emit_signal", "connected")
+		MessageType.CLOSE:
+			emit_signal("disconnected")
 			return
+		MessageType.PING:
+			pong()
+		MessageType.MESSAGE:
+			var message = content.substr(1)
+			emit_signal("message_received", message)
 
-func _on_connected():
-	connected.emit()
-
-func _on_msg_received(msg):
-	message_received.emit(msg)
-
-func _on_closed():
-	disconnected.emit()
-	socket_thread.wait_to_finish()
+func _on_closed(clean):
+	print("Closed, clean:", clean)
