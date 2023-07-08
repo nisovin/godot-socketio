@@ -11,9 +11,15 @@ app.get('/', (req, res) => {
 
 io.on('connection', (socket) => {
   console.log('a user connected');
+  let name = 'Unknown';
+  socket.on('name', (n) => {
+	  console.log('name: ' + n);
+	  name = n;
+  });
   socket.on('chat', (msg) => {
-	  console.log('msg: ' + msg);
-	  socket.emit('chat', 'reply1');
+	  console.log('msg: ' + name + ': ' + msg);
+	  io.emit('chat', name + ': ' + msg);
+	  //socket.emit('chat', 'reply1');
   });
 });
 

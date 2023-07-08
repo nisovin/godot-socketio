@@ -46,6 +46,8 @@ func _send_message(type: MessageType, content: String = "", ack_id = -1):
 
 func _on_engine_connected():
 	_send_message(MessageType.CONNECT)
+	if has_user_signal("connect"):
+		emit_signal("connect")
 
 func _on_engine_message_received(message):
 	var message_type = int(message[0])

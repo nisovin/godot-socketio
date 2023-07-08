@@ -1,4 +1,30 @@
+<html>
+<body>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  var socket = io();
+
+var socket = io();
+socket.on('connect', () => {
+	socket.emit('name', 'Amy');
+});
+
+socket.on('chat', (msg) => document.getElementById('chatlog').innerHTML += msg + '<br>');
+
+function speak() {
+	let input = document.getElementById('message');
+	socket.emit('chat', input.value);
+	input.value = '';
+}
+
 </script>
+
+<form onsubmit="speak(); return false">
+	<input type="text" id="message">
+	<button type="submit">Send</button>
+</form>
+
+<div id="chatlog"></div>
+
+</body>
+</html>

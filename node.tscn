@@ -15,12 +15,22 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="LineEdit" type="LineEdit" parent="Control"]
-layout_mode = 0
-offset_left = 156.0
-offset_top = 163.0
-offset_right = 548.0
-offset_bottom = 198.0
+[node name="VBoxContainer" type="VBoxContainer" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LineEdit" type="LineEdit" parent="Control/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Control/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
 
 [connection signal="request_completed" from="HTTPRequest" to="." method="_on_http_request_request_completed"]
-[connection signal="text_submitted" from="Control/LineEdit" to="." method="_on_line_edit_text_submitted"]
+[connection signal="text_submitted" from="Control/VBoxContainer/LineEdit" to="." method="_on_line_edit_text_submitted"]
